@@ -19,34 +19,74 @@ import javafx.scene.layout.VBox;
  *
  * App.java wraps whatever you return here in a full-size, centered, dark frame,
  * so you only need to return the content (a label, an HBox of widgets, etc.).
+ *
+ *
+ * No I dont fully understand it either - sw 6/23
  */
 public final class Pages {
 
     // The page order. Add, remove, or reorder entries here.
     public static final List<Supplier<Node>> ALL = List.of(
-        Pages::page1,
+        Pages::page1, // i like this syntax. haven't seen it yet. Dont write a ton of jave. Enjoying it so far.
         Pages::page2,
         Pages::page3,
-        Pages::page4
+        Pages::page4,
+        Pages::page5
     );
 
+    /*
+   - info
+        - info logs (important shit)
+   - news
+   - focused here (?)
+        - focused news, how it may impact holdings/ strategy
+        - click to bring up chart, or chart on right, articles on left, navigation within articles. and summaries on top
+            - derived price impact / derived price impact gradient(s) over time(s) <- interesting
+   - holdings (focused)
+        - view performance per holding
+            - Custom views
+                - position(s) over times(s) pnl/total capital
+   - allocation
+        - custom views
+                - position(s) allocation(s) (allocations is interesting, not sure on point, what could have been) & capitol overtime(s)
+                - beta (w what if, if edited allocation)
+                - what if analysis:
+                    - impact on positin p if lever up/lever down/ hedge
+                    - chances of price moving to price p based on gradients (p)
+                    - timelines (catalysts and volumes)
+   - quick research
+            - whats up with this.
+   - quick analysis
+            comparisons/regressions
+            financials/ projections/ aggretated predictions on t (ex. forecasts)
+   - debug
+        - debug logs (what ran, what pulled when)
+
+    That is probably enough for now..... info, debug, holdings, and allocation seem like the reasonable starting place
+    */
+
     private static Node page1() {
-        return bigText("PAGE 1");
+        return bigText("INFO"); // here is where we get busy
     }
 
     private static Node page2() {
-        return bigText("PAGE 2");
+        return bigText("NEWS");
     }
 
     private static Node page3() {
-        return bigText("PAGE 3");
+        return bigText("HOLDINGS");
     }
 
     private static Node page4() {
-        return bigText("PAGE 4");
+        return bigText("ALLOCATION"); // now I just have to build these. lol.
+    }
+
+    private static Node page5() {
+        return bigText("DEBUG");
     }
 
     // Shared helper: one big centered label. Replace per page with real content.
+    // Nice. Claude built a class for placeholder text within a node
     private static Node bigText(String text) {
         Label label = new Label(text);
         label.setStyle("-fx-font-size: 64px; -fx-font-weight: bold;");
