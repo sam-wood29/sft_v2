@@ -6,15 +6,18 @@
     -fx-font-size: 24px;
 }
 .nav {
-    -fx-background-color: rgba(255, 255, 255, 0.08);
-    -fx-text-fill: #e0e0e0;
+    -fx-background-color: #121212;
+    -fx-text-fill: #87cefa;
     -fx-font-size: 28px;
     -fx-background-radius: 8;
+    -fx-border-color: #121212;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
     -fx-min-height: 48;
     -fx-cursor: hand;
 }
 .nav:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.16);
+    -fx-background-color: #121212;
 }
 .divider {
     -fx-background-color: #87cefa;

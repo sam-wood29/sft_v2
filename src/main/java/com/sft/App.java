@@ -1,8 +1,11 @@
 package com.sft;
 
+import java.util.List;
+import java.util.function.Supplier;
 import javafx.application.Application;
 import javafx.animation.TranslateTransition;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -26,16 +29,11 @@ public class App extends Application {
     private static final double VIEW_W = SCREEN_W - 2 * NAV_W - 2 * DIVIDER_W;
     private static final Duration SLIDE = Duration.millis(250);
 
-    // The carousel pages — title + background color. Add your own here.
-    private static final String[][] PAGES = {
-        { "PAGE 1", "#121212" },
-        { "PAGE 2", "#121212" },
-        { "PAGE 3", "#121212" },
-        { "PAGE 4", "#121212" },
-    };
+    // Pages are defined in Pages.java — edit page content there, not here.
+    private final List<Supplier<Node>> pages = Pages.ALL;
 
     private final HBox track = new HBox(); // [clone(last), real pages..., clone(first)]
-    private final int n = PAGES.length;    // number of real pages
+    private final int n = pages.size();    // number of real pages
     private int pos = 1;                    // current track slot; real pages live at 1..n
     private boolean animating = false;      // ignore taps mid-slide
 
@@ -45,12 +43,12 @@ public class App extends Application {
         // clone of the first page at the end. Sliding onto a clone then snapping
         // to the identical real page is what makes the wrap seamless in both
         // directions. (A node can't appear twice in the scene graph, so clones
-        // are fresh VBoxes built from the same definition.)
-        track.getChildren().add(page(PAGES[n - 1][0], PAGES[n - 1][1]));
-        for (String[] p : PAGES) {
-            track.getChildren().add(page(p[0], p[1]));
+        // are fresh nodes built by the Pages factories.)
+        track.getChildren().add(frame(pages.get(n - 1).get())); // clone of last
+        for (Supplier<Node> p : pages) {
+            track.getChildren().add(frame(p.get()));
         }
-        track.getChildren().add(page(PAGES[0][0], PAGES[0][1]));
+        track.getChildren().add(frame(pages.get(0).get()));     // clone of first
         track.setTranslateX(-pos * VIEW_W); // start on the first real page
 
         // Plain Pane positions the track at (0,0) — a StackPane would center it.
@@ -125,20 +123,20 @@ public class App extends Application {
     }
 
     // Animate a node's horizontal position.
-    private void slide(javafx.scene.Node node, double toX) {
+    private void slide(Node node, double toX) {
         TranslateTransition t = new TranslateTransition(SLIDE, node);
         t.setToX(toX);
         t.play();
     }
 
-    private VBox page(String title, String color) {
-        Label label = new Label(title);
-        label.setStyle("-fx-font-size: 64px; -fx-font-weight: bold;");
-        VBox box = new VBox(label);
+    // Wrap a page's content (from Pages.java) in a full-size, centered, dark
+    // frame. This is the unit the carousel slides; one frame == one screen.
+    private VBox frame(Node content) {
+        VBox box = new VBox(content);
         box.setAlignment(Pos.CENTER);
         box.setMinSize(VIEW_W, SCREEN_H);
         box.setPrefSize(VIEW_W, SCREEN_H);
-        box.setStyle("-fx-background-color: " + color + ";");
+        box.setStyle("-fx-background-color: #121212;");
         return box;
     }
 
