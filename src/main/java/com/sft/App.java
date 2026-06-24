@@ -1,6 +1,5 @@
 package com.sft;
 
-import java.util.List;
 import javafx.application.Application;
 import javafx.animation.TranslateTransition;
 import javafx.geometry.Pos;
@@ -22,19 +21,32 @@ public class App extends Application {
     private static final double SCREEN_H = 400;
     private static final Duration SLIDE = Duration.millis(250);
 
-    private final HBox track = new HBox(); // all pages laid side-by-side
-    private int index = 0; // which page is centered
+    // The carousel pages — title + background color. Add your own here.
+    private static final String[][] PAGES = {
+        { "PAGE 1", "#2e3a59" },
+        { "PAGE 2", "#593a2e" },
+        { "PAGE 3", "#2e593a" },
+        { "PAGE 4", "#592e4f" },
+    };
+
+    private final HBox track = new HBox(); // [clone(last), real pages..., clone(first)]
+    private final int n = PAGES.length;    // number of real pages
+    private int pos = 1;                    // current track slot; real pages live at 1..n
+    private boolean animating = false;      // ignore taps mid-slide
 
     @Override
     public void start(Stage stage) {
-        // The carousel pages — each a full-screen VBox. Add your own here.
-        List<VBox> pages = List.of(
-            page("PAGE 1", "#2e3a59"),
-            page("PAGE 2", "#593a2e"),
-            page("PAGE 3", "#2e593a"),
-            page("PAGE 4", "#592e4f")
-        );
-        track.getChildren().addAll(pages);
+        // Build the extended track: a clone of the last page at the front and a
+        // clone of the first page at the end. Sliding onto a clone then snapping
+        // to the identical real page is what makes the wrap seamless in both
+        // directions. (A node can't appear twice in the scene graph, so clones
+        // are fresh VBoxes built from the same definition.)
+        track.getChildren().add(page(PAGES[n - 1][0], PAGES[n - 1][1]));
+        for (String[] p : PAGES) {
+            track.getChildren().add(page(p[0], p[1]));
+        }
+        track.getChildren().add(page(PAGES[0][0], PAGES[0][1]));
+        track.setTranslateX(-pos * SCREEN_W); // start on the first real page
 
         // Plain Pane positions the track at (0,0) — a StackPane would center it.
         // Clip so off-screen pages stay hidden.
@@ -44,8 +56,8 @@ public class App extends Application {
         Button left = navButton("‹");
         Button right = navButton("›");
         Button settings = navButton("⚙");
-        left.setOnAction(e -> go(pages.size(), -1));
-        right.setOnAction(e -> go(pages.size(), +1));
+        left.setOnAction(e -> go(-1));
+        right.setOnAction(e -> go(+1));
 
         // Float the controls over the viewport.
         StackPane carousel = new StackPane(viewport, left, right, settings);
@@ -81,10 +93,25 @@ public class App extends Application {
         stage.show();
     }
 
-    // Advance the carousel by dir (+1 / -1), wrapping around both ends.
-    private void go(int count, int dir) {
-        index = (index + dir + count) % count;
-        slide(track, -index * SCREEN_W);
+    // Advance the carousel by dir (+1 / -1), wrapping seamlessly at both ends.
+    private void go(int dir) {
+        if (animating) return;
+        animating = true;
+        pos += dir;
+        TranslateTransition t = new TranslateTransition(SLIDE, track);
+        t.setToX(-pos * SCREEN_W);
+        t.setOnFinished(e -> {
+            // We've slid onto a clone — snap (no animation) to the real twin.
+            if (pos == 0) {            // clone of last page → real last page
+                pos = n;
+                track.setTranslateX(-pos * SCREEN_W);
+            } else if (pos == n + 1) { // clone of first page → real first page
+                pos = 1;
+                track.setTranslateX(-pos * SCREEN_W);
+            }
+            animating = false;
+        });
+        t.play();
     }
 
     // Animate a node's horizontal position.
