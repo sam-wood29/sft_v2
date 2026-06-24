@@ -8,6 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
@@ -19,8 +20,10 @@ public class App extends Application {
     // Pi screen size — also the width of one carousel page.
     private static final double SCREEN_W = 800;
     private static final double SCREEN_H = 400;
-    private static final double NAV_W = 60;                    // arrow/settings button width (was 48, +25%)
-    private static final double VIEW_W = SCREEN_W - 2 * NAV_W; // carousel is bounded between the side buttons
+    private static final double NAV_W = 60;       // arrow/settings button width (was 48, +25%)
+    private static final double DIVIDER_W = 6;    // light-blue line between button and picture
+    // Carousel is bounded between the side buttons, minus the two dividers.
+    private static final double VIEW_W = SCREEN_W - 2 * NAV_W - 2 * DIVIDER_W;
     private static final Duration SLIDE = Duration.millis(250);
 
     // The carousel pages — title + background color. Add your own here.
@@ -64,8 +67,8 @@ public class App extends Application {
         left.setOnAction(e -> go(-1));
         right.setOnAction(e -> go(+1));
 
-        // Side buttons frame the viewport; the picture is bounded to the middle.
-        HBox row = new HBox(left, viewport, right);
+        // Side buttons frame the viewport; light-blue dividers mark the seams.
+        HBox row = new HBox(left, divider(), viewport, divider(), right);
         row.setAlignment(Pos.CENTER);
 
         // Settings floats over the top-right corner.
@@ -146,6 +149,16 @@ public class App extends Application {
         box.setAlignment(Pos.TOP_CENTER);
         box.setPrefSize(SCREEN_W, SCREEN_H);
         return box;
+    }
+
+    // A thin full-height line separating a side button from the picture.
+    private Region divider() {
+        Region d = new Region();
+        d.getStyleClass().add("divider");
+        d.setMinSize(DIVIDER_W, SCREEN_H);
+        d.setPrefSize(DIVIDER_W, SCREEN_H);
+        d.setMaxSize(DIVIDER_W, SCREEN_H);
+        return d;
     }
 
     private Button navButton(String glyph) {
