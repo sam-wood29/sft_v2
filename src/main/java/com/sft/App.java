@@ -28,10 +28,10 @@ public class App extends Application {
 
     // The carousel pages — title + background color. Add your own here.
     private static final String[][] PAGES = {
-        { "PAGE 1", "#2e3a59" },
-        { "PAGE 2", "#593a2e" },
-        { "PAGE 3", "#2e593a" },
-        { "PAGE 4", "#592e4f" },
+        { "PAGE 1", "#121212" },
+        { "PAGE 2", "#121212" },
+        { "PAGE 3", "#121212" },
+        { "PAGE 4", "#121212" },
     };
 
     private final HBox track = new HBox(); // [clone(last), real pages..., clone(first)]
