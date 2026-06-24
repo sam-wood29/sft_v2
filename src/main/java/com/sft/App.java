@@ -19,6 +19,8 @@ public class App extends Application {
     // Pi screen size — also the width of one carousel page.
     private static final double SCREEN_W = 800;
     private static final double SCREEN_H = 400;
+    private static final double NAV_W = 60;                    // arrow/settings button width (was 48, +25%)
+    private static final double VIEW_W = SCREEN_W - 2 * NAV_W; // carousel is bounded between the side buttons
     private static final Duration SLIDE = Duration.millis(250);
 
     // The carousel pages — title + background color. Add your own here.
@@ -46,12 +48,15 @@ public class App extends Application {
             track.getChildren().add(page(p[0], p[1]));
         }
         track.getChildren().add(page(PAGES[0][0], PAGES[0][1]));
-        track.setTranslateX(-pos * SCREEN_W); // start on the first real page
+        track.setTranslateX(-pos * VIEW_W); // start on the first real page
 
         // Plain Pane positions the track at (0,0) — a StackPane would center it.
-        // Clip so off-screen pages stay hidden.
+        // Clip so off-screen pages stay hidden, and pin the Pane to the view size.
         Pane viewport = new Pane(track);
-        viewport.setClip(new Rectangle(SCREEN_W, SCREEN_H));
+        viewport.setClip(new Rectangle(VIEW_W, SCREEN_H));
+        viewport.setMinSize(VIEW_W, SCREEN_H);
+        viewport.setPrefSize(VIEW_W, SCREEN_H);
+        viewport.setMaxSize(VIEW_W, SCREEN_H);
 
         Button left = navButton("‹");
         Button right = navButton("›");
@@ -59,10 +64,12 @@ public class App extends Application {
         left.setOnAction(e -> go(-1));
         right.setOnAction(e -> go(+1));
 
-        // Float the controls over the viewport.
-        StackPane carousel = new StackPane(viewport, left, right, settings);
-        StackPane.setAlignment(left, Pos.CENTER_LEFT);
-        StackPane.setAlignment(right, Pos.CENTER_RIGHT);
+        // Side buttons frame the viewport; the picture is bounded to the middle.
+        HBox row = new HBox(left, viewport, right);
+        row.setAlignment(Pos.CENTER);
+
+        // Settings floats over the top-right corner.
+        StackPane carousel = new StackPane(row, settings);
         StackPane.setAlignment(settings, Pos.TOP_RIGHT);
 
         // Settings drawer — parked off-screen to the right until opened.
@@ -99,15 +106,15 @@ public class App extends Application {
         animating = true;
         pos += dir;
         TranslateTransition t = new TranslateTransition(SLIDE, track);
-        t.setToX(-pos * SCREEN_W);
+        t.setToX(-pos * VIEW_W);
         t.setOnFinished(e -> {
             // We've slid onto a clone — snap (no animation) to the real twin.
             if (pos == 0) {            // clone of last page → real last page
                 pos = n;
-                track.setTranslateX(-pos * SCREEN_W);
+                track.setTranslateX(-pos * VIEW_W);
             } else if (pos == n + 1) { // clone of first page → real first page
                 pos = 1;
-                track.setTranslateX(-pos * SCREEN_W);
+                track.setTranslateX(-pos * VIEW_W);
             }
             animating = false;
         });
@@ -126,8 +133,8 @@ public class App extends Application {
         label.setStyle("-fx-font-size: 64px; -fx-font-weight: bold;");
         VBox box = new VBox(label);
         box.setAlignment(Pos.CENTER);
-        box.setMinSize(SCREEN_W, SCREEN_H);
-        box.setPrefSize(SCREEN_W, SCREEN_H);
+        box.setMinSize(VIEW_W, SCREEN_H);
+        box.setPrefSize(VIEW_W, SCREEN_H);
         box.setStyle("-fx-background-color: " + color + ";");
         return box;
     }
@@ -144,6 +151,9 @@ public class App extends Application {
     private Button navButton(String glyph) {
         Button b = new Button(glyph);
         b.getStyleClass().add("nav");
+        b.setMinWidth(NAV_W);
+        b.setPrefWidth(NAV_W);
+        b.setMaxWidth(NAV_W);
         return b;
     }
 
