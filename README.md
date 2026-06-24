@@ -1,1 +1,6 @@
-sort of simple (hopefully) finance tracker....
+simple (hopefully) finance tracker....
+
+
+Uses:
+Java25
+Maven
