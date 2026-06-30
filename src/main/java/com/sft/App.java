@@ -1,4 +1,4 @@
-package com.sft;
+package com.sft; // a lot of comments here rn.
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -22,13 +22,11 @@ public class App extends Application {
 
     // Entire App
 
-    // Pi screen size
-    private static final double SCREEN_W = 800;
-    private static final double SCREEN_H = 400;
+    private static final double SCREEN_W = 800; // Pi screen size
+    private static final double SCREEN_H = 400; // Pi screen size
     private static final double NAV_W = 60; // position width of arrow/settings buttons
     private static final double DIVIDER_W = 6; // divider width
-    // Carousel width
-    private static final double VIEW_W = SCREEN_W - 2 * NAV_W - 2 * DIVIDER_W; // wft is this
+    private static final double VIEW_W = SCREEN_W - 2 * NAV_W - 2 * DIVIDER_W; //carousel width?; *** wft is this
     private static final Duration SLIDE = Duration.millis(250); // carousel animation time
 
     // "Calls" Pages; Pages are defined in Pages.java.
@@ -36,7 +34,7 @@ public class App extends Application {
 
     private final HBox track = new HBox(); // [clone(last), real pages..., clone(first)]; this is the carousel "track"/list?
     private final int n = pages.size(); // number of real pages
-    private int pos = 1; // current track slot; real pages live at 1..n
+    private final Carousel pager = new Carousel(n); // owns pos + the wrap math (Carousel.java)
     private boolean animating = false; // ignore taps mid-slide, mid slide animation?
 
     @Override
@@ -55,7 +53,7 @@ public class App extends Application {
             track.getChildren().add(frame(p.get())); // all pages/children
         }
         track.getChildren().add(frame(pages.get(0).get())); // clone of first
-        track.setTranslateX(-pos * VIEW_W); // start on the first real page
+        track.setTranslateX(-pager.pos() * VIEW_W); // start on the first real page
 
         // Plain Pane positions the track at (0,0
         // Clip so off-screen pages stay hidden, and pin the Pane to the view size.
@@ -78,7 +76,7 @@ public class App extends Application {
         row.setAlignment(Pos.CENTER);
 
         // Settings floats over the top-right corner.
-        StackPane carousel = new StackPane(row, settings);
+        StackPane carousel = new StackPane(row, settings); // new carousel
         StackPane.setAlignment(settings, Pos.TOP_RIGHT); // alignment could get messy if adding to Hbox screen and not on Page
 
         // Settings drawer — parked off-screen till opened; config
@@ -115,21 +113,14 @@ public class App extends Application {
     private void go(int dir) {
         if (animating) return; // dont move while animating
         animating = true;
-        pos += dir;
+        int slot = pager.target(dir); // phase 1: slide onto this slot (may be a clone)
         TranslateTransition t = new TranslateTransition(SLIDE, track); //TranslationTranslation object... fancy. moves throught track by t to slide
         // got bored reading around here.
-        t.setToX(-pos * VIEW_W); // VIEW_W = full screen width
+        t.setToX(-slot * VIEW_W); // VIEW_W = full screen width
         t.setOnFinished(e -> {
-            // We've slid onto a clone — snap (no animation) to the real twin.
-            if (pos == 0) {
-                // clone of last page → real last page
-                pos = n;
-                track.setTranslateX(-pos * VIEW_W);
-            } else if (pos == n + 1) {
-                // clone of first page → real first page
-                pos = 1;
-                track.setTranslateX(-pos * VIEW_W);
-            }
+            // We've slid onto a clone — snap (no animation) to the real twin. (logic in Carousel.settle)
+            int settled = pager.settle();
+            track.setTranslateX(-settled * VIEW_W);
             animating = false;
         });
         t.play(); // play and nice animation
