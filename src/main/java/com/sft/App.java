@@ -87,7 +87,7 @@ public class App extends Application {
         settings.setOnAction(e -> slide(drawer, 0)); // slide in
         ((Button) drawer.getChildren().get(0)).setOnAction(
             e -> slide(drawer, SCREEN_W) // close button slides it back out
-        );
+        ); // potential ClassCastExeption() - close button grabbed by getChildren().get(0) cast, reordering drawers children silently
 
         StackPane root = new StackPane(carousel, drawer); // Stackpane root holds the carousel and the settings drawer, holds "entire screen"
 
@@ -96,7 +96,7 @@ public class App extends Application {
             .getStylesheets()
             .add(
                 getClass().getResource("/com/sft/styles.css").toExternalForm()
-            ); // ...pull stylesheet
+            ); // ...pull stylesheet; potential null pointer exception if no stylesheet is found.
 
         stage.setTitle("SFT");
         stage.setScene(scene); // App
@@ -137,6 +137,7 @@ public class App extends Application {
 
     // Animate a node's horizontal position.
     // what is the node?
+    // * no re-entrancy guard, can spam settings
     private void slide(Node node, double toX) {
         TranslateTransition t = new TranslateTransition(SLIDE, node);
         t.setToX(toX);
@@ -150,6 +151,7 @@ public class App extends Application {
         box.setAlignment(Pos.CENTER);
         box.setMinSize(VIEW_W, SCREEN_H);
         box.setPrefSize(VIEW_W, SCREEN_H);
+        // TODO: set stylesheet
         box.setStyle("-fx-background-color: #121212;"); // will likeley set per page. probably not appropiate to have here.
         return box;
     }
