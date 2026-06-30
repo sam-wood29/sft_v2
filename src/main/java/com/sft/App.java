@@ -74,13 +74,19 @@ public class App extends Application {
         // loadFont registers the family; apply via inline -fx-font-family because the
         // .nav rule's -fx-font-size would otherwise override a plain setFont() call.
         // could do a large import/config refactor later....
-        Font icons = Font.loadFont(
-            getClass().getResourceAsStream("/com/sft/icons.ttf"),
-            28
-        );
-        if (icons != null) settings.setStyle(
-            "-fx-font-family: '" + icons.getFamily() + "';"
-        );
+        var iconStream = getClass().getResourceAsStream("/com/sft/icons.ttf");
+        if (iconStream == null) {
+            System.err.println("[icons] resource /com/sft/icons.ttf NOT on classpath — stale build? run `mvn clean compile javafx:run`");
+        }
+        Font icons = Font.loadFont(iconStream, 28);
+        if (icons != null) {
+            // inline -fx-font-size too, so the .nav rule's size doesn't override the family swap
+            settings.setStyle(
+                "-fx-font-family: '" + icons.getFamily() + "'; -fx-font-size: 28px;"
+            );
+        } else {
+            System.err.println("[icons] Font.loadFont returned null — gear glyph will be blank on the Pi");
+        }
         left.setOnAction(e -> go(-1)); // enable navigation
         right.setOnAction(e -> go(+1));
 
@@ -117,8 +123,15 @@ public class App extends Application {
             .toLowerCase()
             .contains("linux");
         if (onPi) {
-            stage.setFullScreen(true); // full screen when launched on Pi. 6/23 need to add escape button
+            stage.setFullScreen(true); // full screen when launched on Pi
             stage.setFullScreenExitHint(""); // removed exit hint from view (stage)
+
+            // Top-left escape out of full screen. Plain "Esc" text (no glyph) so it
+            // can't hit the same missing-font problem we're trying to debug.
+            Button escape = navButton("Esc");
+            escape.setOnAction(e -> stage.setFullScreen(false));
+            root.getChildren().add(escape); // top-most over carousel + drawer
+            StackPane.setAlignment(escape, Pos.TOP_LEFT);
         }
         stage.show();
     }
