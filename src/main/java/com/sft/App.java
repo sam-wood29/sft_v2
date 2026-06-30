@@ -15,6 +15,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -66,7 +67,20 @@ public class App extends Application {
 
         Button left = navButton("«"); // changed these up may again...i did i broke it originally :(
         Button right = navButton("»");
-        Button settings = navButton("⚙"); // nice icon. good job claude
+        Button settings = navButton("⚙");
+        // The Pi's default font has no gear glyph (U+2699), so ⚙ shows on Mac but
+        // is blank on the Pi. Bundle a font that has it (icons.ttf = Noto Sans
+        // Symbols, in resources) and use it just for this button — works anywhere.
+        // loadFont registers the family; apply via inline -fx-font-family because the
+        // .nav rule's -fx-font-size would otherwise override a plain setFont() call.
+        // could do a large import/config refactor later....
+        Font icons = Font.loadFont(
+            getClass().getResourceAsStream("/com/sft/icons.ttf"),
+            28
+        );
+        if (icons != null) settings.setStyle(
+            "-fx-font-family: '" + icons.getFamily() + "';"
+        );
         left.setOnAction(e -> go(-1)); // enable navigation
         right.setOnAction(e -> go(+1));
 
