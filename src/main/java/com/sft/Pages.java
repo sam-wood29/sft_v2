@@ -1,7 +1,6 @@
 package com.sft;
 
 import java.util.List;
-import java.util.function.Supplier;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -12,29 +11,30 @@ import javafx.scene.layout.VBox;
  * change what each page shows; this file has nothing to do with the carousel's
  * sliding/wrapping (that's all in App.java).
  *
- * Each page is a Supplier<Node>: a factory that builds a FRESH node every time
- * it's called. That matters because the carousel builds invisible clones of the
+ * Each page is a Page (a functional interface — Node content()): a factory that
+ * builds a FRESH node every time it's called. That matters because the carousel
+ * builds invisible clones of the
  * first and last pages for its seamless wrap, and a JavaFX node can't appear in
  * the scene twice. As long as each method returns a new node, cloning is free.
  *
  * App.java wraps whatever you return here in a full-size, centered, dark frame,
  * so you only need to return the content (a label, an HBox of widgets, etc.).
  *
- *
- * No I dont fully understand it either - sw 6/23
+ * Still don't fully understand - sw
  */
 public final class Pages {
 
     // The page order. Add, remove, or reorder entries here.
-    public static final List<Supplier<Node>> ALL = List.of(
-        Pages::page1, // i like this syntax. haven't seen it yet. Dont write a ton of jave. Enjoying it so far.
+    public static final List<Page> ALL = List.of(
+        Pages::page1,
         Pages::page2,
         Pages::page3,
         Pages::page4,
         Pages::page5
     );
 
-    /*
+    /* *** Sketch of what to put on seperate pages ->
+
    - info
         - info logs (important shit)
    - news
@@ -66,7 +66,7 @@ public final class Pages {
     */
 
     private static Node page1() {
-        return bigText("INFO"); // here is where we get busy
+        return bigText("INFO");
     }
 
     private static Node page2() {
@@ -78,7 +78,7 @@ public final class Pages {
     }
 
     private static Node page4() {
-        return bigText("ALLOCATION"); // now I just have to build these. lol.
+        return bigText("ALLOCATION");
     }
 
     private static Node page5() {
@@ -95,5 +95,5 @@ public final class Pages {
         return box;
     }
 
-    private Pages() {} // static-only; never instantiated
+    private Pages() {} // static-only; never instantiated; not sure why thats important. -sw
 }

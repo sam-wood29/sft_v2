@@ -1,7 +1,7 @@
-package com.sft; // a lot of comments here rn.
+package com.sft;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.geometry.Pos;
@@ -9,9 +9,9 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
@@ -25,18 +25,25 @@ public class App extends Application {
 
     private static final double SCREEN_W = 800; // Pi screen size
     private static final double SCREEN_H = 400; // Pi screen size
-    private static final double NAV_W = 60; // position width of arrow/settings buttons
-    private static final double DIVIDER_W = 6; // divider width
-    private static final double VIEW_W = SCREEN_W - 2 * NAV_W - 2 * DIVIDER_W; //carousel width?; *** wft is this
-    private static final Duration SLIDE = Duration.millis(250); // carousel animation time
+    private static final double VIEW_W = SCREEN_W; // pages are now full-bleed; nav floats over them
+    private static final double NAV_W = 60; // width of the nav-panel buttons
+    private static final double PANEL_W = 140; // collapsible right nav panel width
+    private static final double HANDLE_W = 24; // always-visible edge handle that toggles the panel
+    private static final double SCROLL_STEP = 0.15; // how far ˄/˅ nudge the page (vvalue is 0..1)
+    private static final Duration SLIDE = Duration.millis(250); // carousel/panel animation time
 
     // "Calls" Pages; Pages are defined in Pages.java.
-    private final List<Supplier<Node>> pages = Pages.ALL;
+    private final List<Page> pages = Pages.ALL;
 
-    private final HBox track = new HBox(); // [clone(last), real pages..., clone(first)]; this is the carousel "track"/list?
+    private final HBox track = new HBox(); // [clone(last), real pages..., clone(first)]; the carousel "track"
+    // Each track frame's ScrollPane, in the SAME order as track children (clones
+    // included). pager.pos() indexes straight into this so ˄/˅ scroll whatever
+    // page is currently on screen.
+    private final List<ScrollPane> scrollers = new ArrayList<>();
     private final int n = pages.size(); // number of real pages
     private final Carousel pager = new Carousel(n); // owns pos + the wrap math (Carousel.java)
-    private boolean animating = false; // ignore taps mid-slide, mid slide animation?
+    private boolean animating = false; // ignore taps mid-slide
+    private boolean panelOpen = false; // is the right nav panel slid in?
 
     @Override
     // stage: holds title of app "shell"
@@ -45,35 +52,37 @@ public class App extends Application {
         // clone of the first page at the end. Sliding onto a clone then snapping
         // to the identical real page is what makes the wrap seamless in both
         // directions. (A node can't appear twice in the scene graph, so clones
-        // are fresh nodes built by the Pages factories.)
-        //
-        // Above is cool. Curious if "clones" are kept and originals deleted, or clones deleted or neither
-        // not certian on below line and relation through block. i think sets lenght of "frames" which hold pages
-        track.getChildren().add(frame(pages.get(n - 1).get()));
-        for (Supplier<Node> p : pages) {
-            track.getChildren().add(frame(p.get())); // all pages/children
+        // are fresh nodes built by the Page factories.)
+        track.getChildren().add(frame(pages.get(n - 1).content()));
+        for (Page p : pages) {
+            track.getChildren().add(frame(p.content())); // all real pages
         }
-        track.getChildren().add(frame(pages.get(0).get())); // clone of first
+        track.getChildren().add(frame(pages.get(0).content())); // clone of first
         track.setTranslateX(-pager.pos() * VIEW_W); // start on the first real page
 
-        // Plain Pane positions the track at (0,0
-        // Clip so off-screen pages stay hidden, and pin the Pane to the view size.
-        // Panes/buttons config; intuitive
+        // Plain Pane positions the track at (0,0). Clip so off-screen pages stay
+        // hidden, and pin the Pane to the full screen — content is full-bleed now.
         Pane viewport = new Pane(track);
         viewport.setClip(new Rectangle(VIEW_W, SCREEN_H));
         viewport.setMinSize(VIEW_W, SCREEN_H);
         viewport.setPrefSize(VIEW_W, SCREEN_H);
         viewport.setMaxSize(VIEW_W, SCREEN_H);
+        // Horizontal swipe drives the carousel; vertical drag scrolls the page
+        // (that's the ScrollPane's own pannable behavior, set in frame()).
+        viewport.setOnSwipeLeft(e -> go(+1));
+        viewport.setOnSwipeRight(e -> go(-1));
 
-        Button left = navButton("«"); // changed these up may again...i did i broke it originally :(
-        Button right = navButton("»");
+        // Nav lives in a collapsible right panel now, not framing the viewport.
+        Button prev = navButton("‹"); // carousel prev
+        Button next = navButton("›"); // carousel next
+        Button up = navButton("˄"); // scroll current page up
+        Button down = navButton("˅"); // scroll current page down
         Button settings = navButton("⚙");
         // The Pi's default font has no gear glyph (U+2699), so ⚙ shows on Mac but
         // is blank on the Pi. Bundle a font that has it (icons.ttf = Noto Sans
         // Symbols, in resources) and use it just for this button — works anywhere.
         // loadFont registers the family; apply via inline -fx-font-family because the
         // .nav rule's -fx-font-size would otherwise override a plain setFont() call.
-        // could do a large import/config refactor later....
         var iconStream = getClass().getResourceAsStream("/com/sft/icons.ttf");
         if (iconStream == null) {
             System.err.println("[icons] resource /com/sft/icons.ttf NOT on classpath — stale build? run `mvn clean compile javafx:run`");
@@ -87,17 +96,43 @@ public class App extends Application {
         } else {
             System.err.println("[icons] Font.loadFont returned null — gear glyph will be blank on the Pi");
         }
-        left.setOnAction(e -> go(-1)); // enable navigation
-        right.setOnAction(e -> go(+1));
+        prev.setOnAction(e -> go(-1));
+        next.setOnAction(e -> go(+1));
+        up.setOnAction(e -> nudge(-SCROLL_STEP)); // ˄ = toward the top = lower vvalue
+        down.setOnAction(e -> nudge(+SCROLL_STEP));
 
-        // Side buttons frame the viewport; light-blue dividers mark the seams.
-        // Hbox used as omnipresent screen; below glues together? <- not 100% certian
-        HBox row = new HBox(left, divider(), viewport, divider(), right);
-        row.setAlignment(Pos.CENTER);
+        // The right nav panel: page arrows, scroll arrows, settings. Parked just
+        // off the right edge; slides in via the handle. Same trick the settings
+        // drawer already uses.
+        HBox pageRow = new HBox(prev, next);
+        pageRow.setAlignment(Pos.CENTER);
+        VBox panel = new VBox(settings, up, pageRow, down);
+        panel.getStyleClass().add("nav-panel");
+        panel.setAlignment(Pos.CENTER);
+        panel.setMinWidth(PANEL_W);
+        panel.setPrefWidth(PANEL_W);
+        panel.setMaxWidth(PANEL_W);
+        panel.setPrefHeight(SCREEN_H);
+        panel.setTranslateX(PANEL_W); // parked off-screen to the right
 
-        // Settings floats over the top-right corner.
-        StackPane carousel = new StackPane(row, settings); // new carousel
-        StackPane.setAlignment(settings, Pos.TOP_RIGHT); // alignment could get messy if adding to Hbox screen and not on Page
+        // Thin always-visible handle at the right edge: tap to slide the panel in/out.
+        Button handle = new Button("‹");
+        handle.getStyleClass().add("handle");
+        handle.setMinWidth(HANDLE_W);
+        handle.setPrefWidth(HANDLE_W);
+        handle.setMaxWidth(HANDLE_W);
+        handle.setPrefHeight(SCREEN_H);
+        handle.setOnAction(e -> {
+            panelOpen = !panelOpen;
+            slide(panel, panelOpen ? 0 : PANEL_W);
+            handle.setText(panelOpen ? "›" : "‹");
+        });
+
+        // viewport is the full-bleed content; panel + handle float over its right edge.
+        StackPane carousel = new StackPane(viewport, panel, handle);
+        StackPane.setAlignment(viewport, Pos.CENTER);
+        StackPane.setAlignment(panel, Pos.CENTER_RIGHT);
+        StackPane.setAlignment(handle, Pos.CENTER_RIGHT);
 
         // Settings drawer — parked off-screen till opened; config
         VBox drawer = settingsDrawer();
@@ -142,7 +177,6 @@ public class App extends Application {
         animating = true;
         int slot = pager.target(dir); // phase 1: slide onto this slot (may be a clone)
         TranslateTransition t = new TranslateTransition(SLIDE, track); //TranslationTranslation object... fancy. moves throught track by t to slide
-        // got bored reading around here.
         t.setToX(-slot * VIEW_W); // VIEW_W = full screen width
         t.setOnFinished(e -> {
             // We've slid onto a clone — snap (no animation) to the real twin. (logic in Carousel.settle)
@@ -153,25 +187,40 @@ public class App extends Application {
         t.play(); // play and nice animation
     }
 
-    // Animate a node's horizontal position.
-    // what is the node?
-    // * no re-entrancy guard, can spam settings
+    // Nudge the currently-visible page's vertical scroll by delta (vvalue is 0..1).
+    private void nudge(double delta) {
+        ScrollPane sp = scrollers.get(pager.pos());
+        sp.setVvalue(Math.max(0, Math.min(1, sp.getVvalue() + delta)));
+    }
+
+    // Animate a node's horizontal position (settings drawer + nav panel).
     private void slide(Node node, double toX) {
         TranslateTransition t = new TranslateTransition(SLIDE, node);
         t.setToX(toX);
         t.play();
     }
 
-    // Wrap a page's content (from Pages.java) in a full-size, centered, dark
-    // frame. This is the unit the carousel slides; one frame == one screen.
-    private VBox frame(Node content) {
-        VBox box = new VBox(content);
-        box.setAlignment(Pos.CENTER);
-        box.setMinSize(VIEW_W, SCREEN_H);
-        box.setPrefSize(VIEW_W, SCREEN_H);
-        // TODO: set stylesheet
-        box.setStyle("-fx-background-color: #121212;"); // will likeley set per page. probably not appropiate to have here.
-        return box;
+    // Wrap a page's content (from Pages.java) in a full-size, dark, vertically
+    // scrollable frame. This is the unit the carousel slides; one frame == one
+    // screen. Short content centers; content taller than the screen scrolls.
+    private ScrollPane frame(Node content) {
+        VBox inner = new VBox(content);
+        inner.setAlignment(Pos.CENTER);
+        inner.setFillWidth(true);
+        inner.setMinHeight(SCREEN_H); // fill the screen so short pages stay centered
+        inner.setStyle("-fx-background-color: #121212;"); // will likeley set per page later
+
+        ScrollPane sp = new ScrollPane(inner);
+        sp.getStyleClass().add("page-scroll");
+        sp.setFitToWidth(true);
+        sp.setPannable(true); // touch/drag to scroll vertically
+        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sp.setMinSize(VIEW_W, SCREEN_H);
+        sp.setPrefSize(VIEW_W, SCREEN_H);
+        sp.setMaxSize(VIEW_W, SCREEN_H);
+        scrollers.add(sp);
+        return sp;
     }
 
     private VBox settingsDrawer() {
@@ -182,17 +231,6 @@ public class App extends Application {
         box.setAlignment(Pos.TOP_CENTER);
         box.setPrefSize(SCREEN_W, SCREEN_H);
         return box;
-    }
-
-    // A thin full-height line separating a side button from the picture.
-    private Region divider() {
-        // config for vertical dividers
-        Region d = new Region();
-        d.getStyleClass().add("divider");
-        d.setMinSize(DIVIDER_W, SCREEN_H);
-        d.setPrefSize(DIVIDER_W, SCREEN_H);
-        d.setMaxSize(DIVIDER_W, SCREEN_H);
-        return d; // positions of dividers based on width?
     }
 
     private Button navButton(String glyph) {

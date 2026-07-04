@@ -19,11 +19,27 @@
 .nav:hover {
     -fx-background-color: #121212;
 }
-.divider {
-    -fx-background-color: #87cefa;
-}
 .drawer {
     -fx-background-color: #1e1e1e;
     -fx-padding: 12;
     -fx-spacing: 16;
+}
+.nav-panel {
+    -fx-background-color: #1e1e1e;
+    -fx-padding: 12;
+    -fx-spacing: 16;
+}
+.handle {
+    -fx-background-color: rgba(135, 206, 250, 0.25);
+    -fx-text-fill: #87cefa;
+    -fx-font-size: 20px;
+    -fx-cursor: hand;
+    -fx-background-radius: 6 0 0 6;
+}
+.handle:hover {
+    -fx-background-color: rgba(135, 206, 250, 0.4);
+}
+/* Keep the ScrollPane from painting a light background over the dark theme. */
+.page-scroll, .page-scroll > .viewport {
+    -fx-background-color: transparent;
 }
