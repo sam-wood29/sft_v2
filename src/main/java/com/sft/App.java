@@ -11,6 +11,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
@@ -29,7 +30,13 @@ public class App extends Application {
     private static final double VIEW_W = SCREEN_W; // pages are full-bleed; only the gear floats over them
     private static final double NAV_W = 60; // width of the drawer ✕ / Esc buttons
     private static final double SCROLL_STEP = 0.15; // how far arrow keys nudge the page (vvalue is 0..1)
+    private static final double AXIS_LOCK_PX = 12; // drag distance before we commit to horizontal vs vertical
+    private static final double SWIPE_PX = 50; // minimum horizontal drag distance to change pages
     private static final Duration SLIDE = Duration.millis(250); // carousel/drawer animation time
+
+    // Which way the in-progress drag gesture has committed to (decided once it
+    // passes AXIS_LOCK_PX). NONE = still deciding.
+    private enum DragAxis { NONE, HORIZONTAL, VERTICAL }
 
     // "Calls" Pages; Pages are defined in Pages.java.
     private final List<Page> pages = Pages.ALL;
@@ -42,6 +49,9 @@ public class App extends Application {
     private final int n = pages.size(); // number of real pages
     private final Carousel pager = new Carousel(n); // owns pos + the wrap math (Carousel.java)
     private boolean animating = false; // ignore taps mid-slide
+    private double dragStartX; // gesture-tracking state (see viewport mouse filters below)
+    private double dragStartY;
+    private DragAxis dragAxis = DragAxis.NONE;
 
     @Override
     // stage: holds title of app "shell"
@@ -65,10 +75,51 @@ public class App extends Application {
         viewport.setMinSize(VIEW_W, SCREEN_H);
         viewport.setPrefSize(VIEW_W, SCREEN_H);
         viewport.setMaxSize(VIEW_W, SCREEN_H);
-        // Horizontal swipe drives the carousel; vertical drag scrolls the page
-        // (that's the ScrollPane's own pannable behavior, set in frame()).
-        viewport.setOnSwipeLeft(e -> go(+1));
-        viewport.setOnSwipeRight(e -> go(-1));
+        // Touch/mouse drag drives the carousel horizontally; a vertical drag falls
+        // through to the ScrollPane's own pannable behavior (frame()) to scroll the
+        // page. We track this manually with Mouse events rather than JavaFX's
+        // SwipeEvent: the Pi runs the embedded ("Monocle") JavaFX platform, which
+        // does not synthesize gesture events (swipe/rotate/zoom) from touch input —
+        // only raw touch, which Monocle also mirrors as Mouse events for
+        // compatibility. Mouse press/drag/release therefore works on both the Pi
+        // touchscreen and a desktop mouse.
+        //
+        // Filters (capture phase) so we see the gesture before the target
+        // ScrollPane's own drag-to-pan handling does — same reason the keyboard
+        // filter below has to be a filter, not a plain handler. We don't decide
+        // the axis until the drag has moved AXIS_LOCK_PX, then commit for the rest
+        // of the gesture: HORIZONTAL consumes the event (blocks ScrollPane panning
+        // and drives go() on release); VERTICAL is left unconsumed so the
+        // ScrollPane pans normally.
+        viewport.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            dragStartX = e.getX();
+            dragStartY = e.getY();
+            dragAxis = DragAxis.NONE;
+        });
+        viewport.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
+            double dx = e.getX() - dragStartX;
+            double dy = e.getY() - dragStartY;
+            if (
+                dragAxis == DragAxis.NONE &&
+                (Math.abs(dx) > AXIS_LOCK_PX || Math.abs(dy) > AXIS_LOCK_PX)
+            ) {
+                dragAxis = Math.abs(dx) > Math.abs(dy)
+                    ? DragAxis.HORIZONTAL
+                    : DragAxis.VERTICAL;
+            }
+            if (dragAxis == DragAxis.HORIZONTAL) {
+                e.consume();
+            }
+        });
+        viewport.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+            if (dragAxis == DragAxis.HORIZONTAL) {
+                double dx = e.getX() - dragStartX;
+                if (dx <= -SWIPE_PX) go(+1); // dragged left -> next page
+                else if (dx >= SWIPE_PX) go(-1); // dragged right -> prev page
+                e.consume();
+            }
+            dragAxis = DragAxis.NONE;
+        });
 
         // Navigation is swipe (touch/Pi) + arrow keys (keyboard/computer) — see
         // the swipe handlers above and scene.setOnKeyPressed below. No on-screen
