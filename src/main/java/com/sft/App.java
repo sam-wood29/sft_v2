@@ -10,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
@@ -25,25 +26,22 @@ public class App extends Application {
 
     private static final double SCREEN_W = 800; // Pi screen size
     private static final double SCREEN_H = 400; // Pi screen size
-    private static final double VIEW_W = SCREEN_W; // pages are now full-bleed; nav floats over them
-    private static final double NAV_W = 60; // width of the nav-panel buttons
-    private static final double PANEL_W = 140; // collapsible right nav panel width
-    private static final double HANDLE_W = 24; // always-visible edge handle that toggles the panel
-    private static final double SCROLL_STEP = 0.15; // how far ˄/˅ nudge the page (vvalue is 0..1)
-    private static final Duration SLIDE = Duration.millis(250); // carousel/panel animation time
+    private static final double VIEW_W = SCREEN_W; // pages are full-bleed; only the gear floats over them
+    private static final double NAV_W = 60; // width of the drawer ✕ / Esc buttons
+    private static final double SCROLL_STEP = 0.15; // how far arrow keys nudge the page (vvalue is 0..1)
+    private static final Duration SLIDE = Duration.millis(250); // carousel/drawer animation time
 
     // "Calls" Pages; Pages are defined in Pages.java.
     private final List<Page> pages = Pages.ALL;
 
     private final HBox track = new HBox(); // [clone(last), real pages..., clone(first)]; the carousel "track"
     // Each track frame's ScrollPane, in the SAME order as track children (clones
-    // included). pager.pos() indexes straight into this so ˄/˅ scroll whatever
-    // page is currently on screen.
+    // included). pager.pos() indexes straight into this so the Up/Down keys
+    // scroll whatever page is currently on screen.
     private final List<ScrollPane> scrollers = new ArrayList<>();
     private final int n = pages.size(); // number of real pages
     private final Carousel pager = new Carousel(n); // owns pos + the wrap math (Carousel.java)
     private boolean animating = false; // ignore taps mid-slide
-    private boolean panelOpen = false; // is the right nav panel slid in?
 
     @Override
     // stage: holds title of app "shell"
@@ -72,67 +70,31 @@ public class App extends Application {
         viewport.setOnSwipeLeft(e -> go(+1));
         viewport.setOnSwipeRight(e -> go(-1));
 
-        // Nav lives in a collapsible right panel now, not framing the viewport.
-        Button prev = navButton("‹"); // carousel prev
-        Button next = navButton("›"); // carousel next
-        Button up = navButton("˄"); // scroll current page up
-        Button down = navButton("˅"); // scroll current page down
-        Button settings = navButton("⚙");
-        // The Pi's default font has no gear glyph (U+2699), so ⚙ shows on Mac but
-        // is blank on the Pi. Bundle a font that has it (icons.ttf = Noto Sans
-        // Symbols, in resources) and use it just for this button — works anywhere.
-        // loadFont registers the family; apply via inline -fx-font-family because the
-        // .nav rule's -fx-font-size would otherwise override a plain setFont() call.
+        // Navigation is swipe (touch/Pi) + arrow keys (keyboard/computer) — see
+        // the swipe handlers above and scene.setOnKeyPressed below. No on-screen
+        // arrows. The only floating control is the settings gear.
+        Button settings = new Button("⚙"); // ⚙
+        settings.getStyleClass().add("icon-nav"); // .icon-nav sets NO font prop (see below)
+        // The Pi's default font has no gear glyph (U+2699). icons.ttf (Noto Sans
+        // Symbols, in resources) has it. Apply the loaded Font OBJECT directly via
+        // setFont — not a CSS -fx-font-family name string (that lookup silently
+        // failed and left the glyph blank on Mac and Pi). For setFont to stick,
+        // .icon-nav must not set any -fx-font-* property, else CSS re-derives the
+        // font and clobbers it.
         var iconStream = getClass().getResourceAsStream("/com/sft/icons.ttf");
         if (iconStream == null) {
             System.err.println("[icons] resource /com/sft/icons.ttf NOT on classpath — stale build? run `mvn clean compile javafx:run`");
         }
         Font icons = Font.loadFont(iconStream, 28);
         if (icons != null) {
-            // inline -fx-font-size too, so the .nav rule's size doesn't override the family swap
-            settings.setStyle(
-                "-fx-font-family: '" + icons.getFamily() + "'; -fx-font-size: 28px;"
-            );
+            settings.setFont(icons);
         } else {
-            System.err.println("[icons] Font.loadFont returned null — gear glyph will be blank on the Pi");
+            System.err.println("[icons] Font.loadFont returned null — gear glyph will be blank");
         }
-        prev.setOnAction(e -> go(-1));
-        next.setOnAction(e -> go(+1));
-        up.setOnAction(e -> nudge(-SCROLL_STEP)); // ˄ = toward the top = lower vvalue
-        down.setOnAction(e -> nudge(+SCROLL_STEP));
 
-        // The right nav panel: page arrows, scroll arrows, settings. Parked just
-        // off the right edge; slides in via the handle. Same trick the settings
-        // drawer already uses.
-        HBox pageRow = new HBox(prev, next);
-        pageRow.setAlignment(Pos.CENTER);
-        VBox panel = new VBox(settings, up, pageRow, down);
-        panel.getStyleClass().add("nav-panel");
-        panel.setAlignment(Pos.CENTER);
-        panel.setMinWidth(PANEL_W);
-        panel.setPrefWidth(PANEL_W);
-        panel.setMaxWidth(PANEL_W);
-        panel.setPrefHeight(SCREEN_H);
-        panel.setTranslateX(PANEL_W); // parked off-screen to the right
-
-        // Thin always-visible handle at the right edge: tap to slide the panel in/out.
-        Button handle = new Button("‹");
-        handle.getStyleClass().add("handle");
-        handle.setMinWidth(HANDLE_W);
-        handle.setPrefWidth(HANDLE_W);
-        handle.setMaxWidth(HANDLE_W);
-        handle.setPrefHeight(SCREEN_H);
-        handle.setOnAction(e -> {
-            panelOpen = !panelOpen;
-            slide(panel, panelOpen ? 0 : PANEL_W);
-            handle.setText(panelOpen ? "›" : "‹");
-        });
-
-        // viewport is the full-bleed content; panel + handle float over its right edge.
-        StackPane carousel = new StackPane(viewport, panel, handle);
-        StackPane.setAlignment(viewport, Pos.CENTER);
-        StackPane.setAlignment(panel, Pos.CENTER_RIGHT);
-        StackPane.setAlignment(handle, Pos.CENTER_RIGHT);
+        // viewport is the full-bleed content; the gear floats over its top-right corner.
+        StackPane carousel = new StackPane(viewport, settings);
+        StackPane.setAlignment(settings, Pos.TOP_RIGHT);
 
         // Settings drawer — parked off-screen till opened; config
         VBox drawer = settingsDrawer();
@@ -150,6 +112,26 @@ public class App extends Application {
             .add(
                 getClass().getResource("/com/sft/styles.css").toExternalForm()
             ); // ...pull stylesheet; potential null pointer exception if no stylesheet is found.
+
+        // Keyboard nav (computer): Left/Right move the carousel, Up/Down scroll the
+        // current page. Touch swipe (Pi) is wired on the viewport above.
+        //
+        // This MUST be an event filter, not scene.setOnKeyPressed. A ScrollPane's
+        // default skin handles arrow keys itself (to scroll) when it has focus, and
+        // that on-target handling runs before a bubble-phase handler at the Scene
+        // ever sees the event — so the keys silently never reached go()/nudge().
+        // A filter runs during the capture phase (Scene -> ... -> target), before
+        // the target's own key handling, so we get first crack and consume() it.
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            switch (e.getCode()) {
+                case LEFT -> go(-1);
+                case RIGHT -> go(+1);
+                case UP -> nudge(-SCROLL_STEP);
+                case DOWN -> nudge(+SCROLL_STEP);
+                default -> { return; }
+            }
+            e.consume();
+        });
 
         stage.setTitle("SFT");
         stage.setScene(scene); // App
@@ -213,9 +195,13 @@ public class App extends Application {
         ScrollPane sp = new ScrollPane(inner);
         sp.getStyleClass().add("page-scroll");
         sp.setFitToWidth(true);
-        sp.setPannable(true); // touch/drag to scroll vertically
+        sp.setPannable(true); // finger/drag to scroll vertically
+        // No scrollbar chrome — scrolling is finger-drag (touch/Pi) or the Up/Down
+        // arrow keys (nudge(), computer), both wired above. AS_NEEDED would still
+        // draw a bar whenever content overflows; NEVER suppresses it on both bars
+        // without disabling the scrolling itself.
         sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         sp.setMinSize(VIEW_W, SCREEN_H);
         sp.setPrefSize(VIEW_W, SCREEN_H);
         sp.setMaxSize(VIEW_W, SCREEN_H);
