@@ -3,10 +3,9 @@ package com.sft.data;
 import java.nio.file.Path;
 
 /**
- * Resolves the path to finance-ingest's SQLite db (finance.db). Override
- * order: -Dsft.db.path system property, then SFT_DB_PATH env var, then a
- * default assuming sft_v2 and finance-ingest are checked out as sibling
- * directories (true today on both Mac dev and the Pi).
+ * Resolves the path to the finance SQLite db (data/database.db, populated by
+ * finance-ingest's Plaid sync). Override order: -Dsft.db.path system
+ * property, then SFT_DB_PATH env var, then the local default.
  */
 public final class DbConfig {
 
@@ -15,8 +14,7 @@ public final class DbConfig {
         if (override != null && !override.isBlank()) {
             return Path.of(override);
         }
-        return Path.of(System.getProperty("user.dir"), "..", "finance-ingest", "finance.db")
-            .normalize();
+        return Path.of(System.getProperty("user.dir"), "data", "database.db").normalize();
     }
 
     private DbConfig() {}

@@ -1,6 +1,9 @@
 # Maven build output
 target/
 
+# Local data
+data/
+
 # IDE
 .idea/
 *.iml

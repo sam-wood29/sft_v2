@@ -11,3 +11,4 @@ Notes:
 Project Status
 - 7/4 did some work on UI. appears to be good. lots of AI gen
 - 7/4 need to implement/refactor code from original sft project.
+- 7/5 started refactor of holdings from 'finance-ingest' project
