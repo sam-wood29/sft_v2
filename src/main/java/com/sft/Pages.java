@@ -1,5 +1,7 @@
 package com.sft;
 
+import com.sft.data.DbConfig;
+import com.sft.data.HoldingsRepository;
 import java.util.List;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -74,7 +76,7 @@ public final class Pages {
     }
 
     private static Node page3() {
-        return bigText("HOLDINGS");
+        return new HoldingsPage(new HoldingsRepository(DbConfig.resolveDbPath())).content();
     }
 
     private static Node page4() {

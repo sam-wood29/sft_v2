@@ -40,3 +40,27 @@
 .page-scroll, .page-scroll > .viewport {
     -fx-background-color: transparent;
 }
+/* HOLDINGS page rows. */
+.holdings-row {
+    -fx-padding: 8 4;
+    -fx-border-color: #1e1e1e;
+    -fx-border-width: 0 0 1 0;
+}
+.holdings-ticker {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+.muted-text {
+    -fx-text-fill: #808080;
+    -fx-font-size: 14px;
+}
+.error-text {
+    -fx-text-fill: #ff6b6b;
+    -fx-font-size: 18px;
+}
+.pnl-positive {
+    -fx-text-fill: #6bcf6b;
+}
+.pnl-negative {
+    -fx-text-fill: #ff6b6b;
+}
