@@ -4,6 +4,9 @@ target/
 # Local data
 data/
 
+# Secrets
+.env
+
 # IDE
 .idea/
 *.iml

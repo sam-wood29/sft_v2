@@ -33,6 +33,11 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.49.1.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.plaid</groupId>
+            <artifactId>plaid-java</artifactId>
+            <version>35.0.0</version>
+        </dependency>
     </dependencies>
 
     <build> 
