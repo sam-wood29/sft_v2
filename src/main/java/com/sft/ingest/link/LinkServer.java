@@ -17,7 +17,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.ArrayList; // should take look at this at some point...
 import java.util.List;
 import java.util.concurrent.Executors;
 import retrofit2.Response;

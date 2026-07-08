@@ -18,22 +18,25 @@ import org.sqlite.SQLiteConfig;
  */
 public final class HoldingsRepository {
 
-    // "Latest snapshot per (account_id, security_id)" - holdings is an
-    // append-only snapshot table (one row per sync run), so the current
-    // position is whichever row has the max as_of for that pair.
+    // Only rows from each account's OVERALL latest sync run (not each
+    // security's own independent latest) count as "currently held". A
+    // security missing from the most recent /investments/holdings/get
+    // response means the position was closed - Plaid simply stops
+    // returning it, no new row gets written, so its last row must NOT be
+    // treated as still-current just because it's the newest row that
+    // exists for that particular security.
     private static final String QUERY = """
-        WITH latest AS (
-            SELECT account_id, security_id, MAX(as_of) AS ts
+        WITH account_latest AS (
+            SELECT account_id, MAX(as_of) AS latest_run
             FROM holdings
-            GROUP BY account_id, security_id
+            GROUP BY account_id
         )
         SELECT a.name AS account_name, i.institution_name,
                s.ticker_symbol, s.name AS security_name,
                h.quantity, h.cost_basis, h.institution_value AS current_value,
                h.institution_price AS current_price, h.iso_currency AS currency, h.as_of
         FROM holdings h
-        JOIN latest l ON l.account_id = h.account_id AND l.security_id = h.security_id
-                     AND l.ts = h.as_of
+        JOIN account_latest al ON al.account_id = h.account_id AND al.latest_run = h.as_of
         JOIN accounts a ON a.account_id = h.account_id
         JOIN items    i ON i.item_id    = a.item_id
         JOIN securities s ON s.security_id = h.security_id
@@ -100,6 +103,15 @@ public final class HoldingsRepository {
     //   same (account_id, security_id) with different as_of values; assert
     //   currentHoldings() returns only the row with the max as_of. Verifies
     //   the append-only-snapshot query picks "current," not "every sync ever."
+    //
+    // - closedPositionDropsOutOfCurrentHoldings(): insert a security with a
+    //   holdings row at an OLD as_of, then a second, different security for
+    //   the same account at a NEWER as_of (simulating: the old security was
+    //   sold and Plaid stopped returning it, the new one is what the latest
+    //   sync actually saw). Assert currentHoldings() returns ONLY the newer
+    //   security, not both. Verifies the account_latest join correctly
+    //   excludes positions absent from the most recent sync run, rather than
+    //   incorrectly surfacing every security's own independent "latest" row.
     //
     // - nullTickerDoesNotBreakMapping(): insert a security row with a NULL
     //   ticker_symbol (mirrors a real cash position in finance.db). Assert
