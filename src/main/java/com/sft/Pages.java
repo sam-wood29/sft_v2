@@ -80,7 +80,7 @@ public final class Pages {
     }
 
     private static Node page4() {
-        return bigText("ALLOCATION");
+        return new AllocationPage(new HoldingsRepository(DbConfig.resolveDbPath())).content();
     }
 
     private static Node page5() {

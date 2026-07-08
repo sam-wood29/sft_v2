@@ -34,7 +34,10 @@ public final class HoldingsRepository {
         SELECT a.name AS account_name, i.institution_name,
                s.ticker_symbol, s.name AS security_name,
                h.quantity, h.cost_basis, h.institution_value AS current_value,
-               h.institution_price AS current_price, h.iso_currency AS currency, h.as_of
+               h.institution_price AS current_price, h.iso_currency AS currency, h.as_of,
+               s.type AS security_type,
+               json_extract(s.raw_json, '$.sector') AS sector,
+               json_extract(s.raw_json, '$.industry') AS industry
         FROM holdings h
         JOIN account_latest al ON al.account_id = h.account_id AND al.latest_run = h.as_of
         JOIN accounts a ON a.account_id = h.account_id
@@ -84,7 +87,10 @@ public final class HoldingsRepository {
             rs.getDouble("current_value"),
             nullableDouble(rs, "current_price"),
             rs.getString("currency"),
-            rs.getString("as_of")
+            rs.getString("as_of"),
+            rs.getString("security_type"),
+            rs.getString("sector"),
+            rs.getString("industry")
         );
     }
 

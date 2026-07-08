@@ -64,3 +64,17 @@
 .pnl-negative {
     -fx-text-fill: #ff6b6b;
 }
+/* ALLOCATION page pie charts - JavaFX's default chart text is dark, needs
+   overriding to stay legible against this app's dark background. */
+.chart-title {
+    -fx-text-fill: #e0e0e0;
+}
+.chart-legend {
+    -fx-background-color: transparent;
+}
+.chart-legend-item {
+    -fx-text-fill: #e0e0e0;
+}
+.chart-pie-label {
+    -fx-fill: #e0e0e0;
+}
