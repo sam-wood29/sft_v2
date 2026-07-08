@@ -38,9 +38,16 @@ public final class AllocationPage implements Page {
         }
     }
 
+    // Screen is 800x400 (Pi 7" DSI). Each chart gets nearly the full
+    // viewport width/height so one scroll position shows one chart at
+    // (close to) full size, instead of a small chart floating in a sea of
+    // unused margin.
+    private static final double CHART_WIDTH = 760;
+    private static final double CHART_HEIGHT = 380;
+
     private Node populated(List<Holding> holdings) {
-        VBox box = new VBox(16);
-        box.setPadding(new Insets(16));
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(8));
         box.setAlignment(Pos.TOP_CENTER);
 
         box.getChildren().add(chart("Current value by position", AllocationAggregator.byPosition(holdings)));
@@ -61,13 +68,17 @@ public final class AllocationPage implements Page {
         }
         PieChart chart = new PieChart();
         chart.setTitle(title);
-        chart.setLegendVisible(true);
+        // Legend would just repeat what's already on each slice's label
+        // (name + %) - skip it so the pie itself gets the vertical room.
+        chart.setLegendVisible(false);
         chart.setLabelsVisible(true);
+        chart.setLabelLineLength(12);
         for (AllocationSlice slice : slices) {
             chart.getData().add(new PieChart.Data(String.format("%s (%.1f%%)", slice.label(), slice.percentage()), slice.amount()));
         }
-        chart.setPrefSize(380, 320);
-        chart.setMaxSize(380, 320);
+        chart.setPrefSize(CHART_WIDTH, CHART_HEIGHT);
+        chart.setMinSize(CHART_WIDTH, CHART_HEIGHT);
+        chart.setMaxSize(CHART_WIDTH, CHART_HEIGHT);
         return chart;
     }
 
