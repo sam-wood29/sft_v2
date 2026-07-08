@@ -13,6 +13,7 @@ Project Status
 - 7/4 need to implement/refactor code from original sft project.
 - 7/5 started refactor of holdings from 'finance-ingest' project
 - 7/5 java port of finance-ingest project. Subcommands: init-db, sync, check, link. Link flow built, and "structuraly validated", but no real click through yet. Untested for now.
+- 7/7 holdings works on pi
 
 
 Design Decisions
